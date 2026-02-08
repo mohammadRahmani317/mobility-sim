@@ -13,17 +13,30 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
     <dependencies>
         <dependency>
-            <groupId>org.cloudbus</groupId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <version>3.5.7</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.cloudbus.cloudsim</groupId>
             <artifactId>cloudsim</artifactId>
             <version>7.0.1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/cloudsim-7.0.1.jar</systemPath>
         </dependency>
+
         <dependency>
-            <groupId>org.cloudbus</groupId>
+            <groupId>org.cloudbus.cloudsim</groupId>
             <artifactId>cloudsim-examples</artifactId>
             <version>7.0.1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/cloudsim-examples-7.0.1.jar</systemPath>
         </dependency>
+
     </dependencies>
 
     <build>
