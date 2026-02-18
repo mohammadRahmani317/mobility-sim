@@ -1,4 +1,4 @@
-package ir.srbiau.cloudsim.mobilitysim.model;
+package ir.srbiau.cloudsim.mobilitysim.dto;
 
 public record VmConfig(
         int mips,

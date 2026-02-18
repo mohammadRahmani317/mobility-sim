@@ -1,8 +1,9 @@
 package ir.srbiau.cloudsim.mobilitysim.service;
 
+import ir.srbiau.cloudsim.mobilitysim.dto.DatacenterConfig;
+import ir.srbiau.cloudsim.mobilitysim.dto.HostConfig;
+import ir.srbiau.cloudsim.mobilitysim.dto.VmConfig;
 import ir.srbiau.cloudsim.mobilitysim.preset.*;
-import ir.srbiau.cloudsim.mobilitysim.model.*;
-import org.cloudbus.cloudsim.examples.CloudSimExample1;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,7 +30,7 @@ public class PresetService {
                         0.01,
                         0.005,
                         0.001,
-                        0.0
+                        2.0
                 ),
                 new HostConfig(
                         16384,

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/presets")
+@RequestMapping("/api/mobility-sim/presets")
 public class PresetController {
 
     private final PresetService presetService;

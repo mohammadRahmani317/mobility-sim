@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ---------------- Fetch Presets from Backend ----------------
-    fetch('/api/presets')
+    fetch('/api/mobility-sim/presets')
         .then(res => res.json())
         .then(data => {
             presets = data; // expects { "LINUX": {...}, "WINDOWS": {...} }
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
             vms: collect(vmList)
         };
 
-        fetch('/api/cloudsim', {
+        fetch('/api/mobility-sim', {
             method: 'POST',
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(payload)
