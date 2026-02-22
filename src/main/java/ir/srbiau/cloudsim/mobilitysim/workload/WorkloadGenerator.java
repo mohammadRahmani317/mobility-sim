@@ -13,74 +13,76 @@ import java.util.Random;
 
 @Component
 public class WorkloadGenerator {
-    private static final Random random = new Random();
+
+    private static final Random RANDOM = new Random();
+    private static final int EASY_USER_COUNT = 10;//10
+    private static final int MEDIUM_USER_COUNT = 6;//6
+    private static final int HARD_USER_COUNT = 4;//4
 
     public List<User> generateUsers() {
         List<User> users = new ArrayList<>();
-        int easyUsers = 10, mediumUsers = 6, hardUsers = 4;
 
-        for (int i = 0; i < easyUsers; i++) {
-            User user = new User(i);
-            generateCloudlets(user, UserLevel.EASY);
-            users.add(user);
-        }
-
-        for (int i = easyUsers; i < easyUsers + mediumUsers; i++) {
-            User user = new User(i);
-            generateCloudlets(user, UserLevel.MEDIUM);
-            users.add(user);
-        }
-
-        for (int i = easyUsers + mediumUsers; i < easyUsers + mediumUsers + hardUsers; i++) {
-            User user = new User(i);
-            generateCloudlets(user, UserLevel.HARD);
-            users.add(user);
-        }
+        generateUserLevelUsers(users, UserLevel.EASY, EASY_USER_COUNT);
+        generateUserLevelUsers(users, UserLevel.MEDIUM, MEDIUM_USER_COUNT);
+        generateUserLevelUsers(users, UserLevel.HARD, HARD_USER_COUNT);
 
         return users;
     }
 
-    private void generateCloudlets(User user, UserLevel userLevel) {
-        int numCloudlets = 0;
-        int lengthMin = 1000, lengthMax = 5000;
-
-        switch (userLevel) {
-            case UserLevel.EASY:
-                numCloudlets = random.nextInt(3) + 2; // 2-4 Cloudlet
-                break;
-            case UserLevel.MEDIUM:
-                numCloudlets = random.nextInt(4) + 5; // 5-8 Cloudlet
-                lengthMin = 5000;
-                lengthMax = 20000;
-                break;
-            case UserLevel.HARD:
-                numCloudlets = random.nextInt(8) + 8; // 8-15 Cloudlet
-                lengthMin = 20000;
-                lengthMax = 50000;
-                break;
+    private void generateUserLevelUsers(List<User> users, UserLevel userLevel, int userCount) {
+        for (int i = 0; i < userCount; i++) {
+            User user = new User(i, userLevel,userLevel.name());
+            generateCloudlets(user, userLevel);
+            users.add(user);
         }
+    }
+
+    private void generateCloudlets(User user, UserLevel userLevel) {
+        int numCloudlets = getCloudletCount(userLevel);
+        int lengthMin = getCloudletMinLength(userLevel);
+        int lengthMax = getCloudletMaxLength(userLevel);
+
 
         for (int i = 0; i < numCloudlets; i++) {
-            long length = random.nextLong(lengthMin, lengthMax);
-
-            UtilizationModelStochastic utilizationModelStochastic = new UtilizationModelStochastic();
-
-            CloudletMobility cloudlet = new CloudletMobility(
-                    i,
-                    length,
-                    1,
-                    300L,
-                    400L,
-                    utilizationModelStochastic,
-                    utilizationModelStochastic,
-                    utilizationModelStochastic,
-                    user.getId()
-            );
-
+            long length = RANDOM.nextLong(lengthMin, lengthMax);
+            CloudletMobility cloudlet = createCloudlet(i, length, user);
             user.addCloudlet(cloudlet);
         }
+
         assignPriority(user.getCloudlets());
-        createDag(user);
+    }
+
+    private int getCloudletCount(UserLevel userLevel) {
+        return switch (userLevel) {
+            case EASY -> RANDOM.nextInt(3) + 2;
+            case MEDIUM -> RANDOM.nextInt(4) + 5;
+            case HARD -> RANDOM.nextInt(8) + 8;
+        };
+    }
+
+    private int getCloudletMinLength(UserLevel userLevel) {
+        return switch (userLevel) {
+            case EASY -> 1000;
+            case MEDIUM -> 5000;
+            case HARD -> 20000;
+        };
+    }
+
+    private int getCloudletMaxLength(UserLevel userLevel) {
+        return switch (userLevel) {
+            case EASY -> 5000;
+            case MEDIUM -> 20000;
+            case HARD -> 50000;
+        };
+    }
+
+    private CloudletMobility createCloudlet(int id, long length, User user) {
+        UtilizationModelStochastic utilizationModel = new UtilizationModelStochastic();
+
+        return new CloudletMobility(
+                id, length, 1, 300L, 400L,
+                utilizationModel, utilizationModel, utilizationModel,user
+        );
     }
 
     private void assignPriority(List<CloudletMobility> cloudlets) {
@@ -88,24 +90,21 @@ public class WorkloadGenerator {
 
         int priority = 1;
         for (CloudletMobility cloudlet : cloudlets) {
-            cloudlet.setPriority(priority++);  // تخصیص اولویت به ترتیب
+            cloudlet.setPriority(priority++); // Assign priority based on length
         }
     }
 
+    // Optional DAG creation method (commented out in your original code)
     private void createDag(User user) {
         List<CloudletMobility> cloudlets = user.getCloudlets();
-
         cloudlets.sort(Comparator.comparingInt(CloudletMobility::getPriority).reversed());
 
         for (int i = 0; i < cloudlets.size(); i++) {
             CloudletMobility cloudlet = cloudlets.get(i);
-
             List<CloudletMobility> parents = new ArrayList<>();
-
 
             for (int j = 0; j < i; j++) {
                 CloudletMobility parent = cloudlets.get(j);
-
                 if (cloudlet.getPriority() > parent.getPriority()) {
                     parents.add(parent);
                 }
@@ -117,5 +116,3 @@ public class WorkloadGenerator {
         System.out.println("DAG created for user " + user.getId() + " with " + cloudlets.size() + " cloudlets.");
     }
 }
-
-

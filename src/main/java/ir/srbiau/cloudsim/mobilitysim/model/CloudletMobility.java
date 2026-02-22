@@ -11,16 +11,16 @@ public class CloudletMobility extends Cloudlet {
     private List<CloudletMobility> parents;
     private double x;
     private double y;
+    private User user;
 
 
     public CloudletMobility(int cloudletId, long cloudletLength, int pesNumber, long cloudletFileSize, long cloudletOutputSize,
-                            UtilizationModel utilizationModelCpu, UtilizationModel utilizationModelRam, UtilizationModel utilizationModelBw,
-                            Integer userId) {
+                            UtilizationModel utilizationModelCpu, UtilizationModel utilizationModelRam, UtilizationModel utilizationModelBw, User user) {
         super(cloudletId, cloudletLength, pesNumber, cloudletFileSize, cloudletOutputSize, utilizationModelCpu, utilizationModelRam, utilizationModelBw);
-        setUserId(userId);
         this.parents = new ArrayList<>();
         this.x = Math.random() * 1000;
         this.y = Math.random() * 1000;
+        this.user = user;
     }
 
 
@@ -50,6 +50,10 @@ public class CloudletMobility extends Cloudlet {
 
     public void setY(double y) {
         this.y = y;
+    }
+
+    public User getUser() {
+        return user;
     }
 
     @Override

@@ -3,12 +3,15 @@ package ir.srbiau.cloudsim.mobilitysim.service;
 import ir.srbiau.cloudsim.mobilitysim.dto.ResourceRequestDto;
 import ir.srbiau.cloudsim.mobilitysim.dto.SimulationResultDto;
 import ir.srbiau.cloudsim.mobilitysim.dto.VmConfig;
+import ir.srbiau.cloudsim.mobilitysim.model.CloudletMobility;
 import ir.srbiau.cloudsim.mobilitysim.model.User;
 import ir.srbiau.cloudsim.mobilitysim.model.VmMobility;
+import ir.srbiau.cloudsim.mobilitysim.scheduling.NearestVmStrategy;
+import ir.srbiau.cloudsim.mobilitysim.scheduling.RoundRobin;
+import ir.srbiau.cloudsim.mobilitysim.scheduling.VmSchedulingStrategy;
 import ir.srbiau.cloudsim.mobilitysim.workload.WorkloadGenerator;
 import org.cloudbus.cloudsim.*;
 import org.cloudbus.cloudsim.core.CloudSim;
-import org.cloudbus.cloudsim.examples.CloudSimExample3;
 import org.cloudbus.cloudsim.provisioners.BwProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.PeProvisionerSimple;
 import org.cloudbus.cloudsim.provisioners.RamProvisionerSimple;
@@ -16,10 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.LinkedList;
-import java.util.List;
+import java.text.DecimalFormat;
+import java.util.*;
 
 @Service
 public class MobilitySimService {
@@ -28,18 +29,27 @@ public class MobilitySimService {
 
     public ResponseEntity<SimulationResultDto> run(ResourceRequestDto dto) {
         try {
-            CloudSimExample3.main(new String[]{});
             int num_user = 1;
             Calendar calendar = Calendar.getInstance();
             boolean trace_flag = false;
             CloudSim.init(num_user, calendar, trace_flag);
-            createDatacenter("Datacenter_0");
+            createDatacenter(dto);
             DatacenterBroker broker = new DatacenterBroker("Broker");
             List<VmMobility> vms = createVm(dto.vms(), broker.getId());
             broker.submitGuestList(vms);
             List<User> users = workloadGenerator.generateUsers();
+            VmSchedulingStrategy vmSchedulingStrategy = new RoundRobin();
+            vmSchedulingStrategy.assignCloudletsToVms(
+                    users,
+                    vms,
+                    broker.getId()
+            );
 
-            return null;
+            users.forEach(user -> broker.submitCloudletList(user.getCloudlets()));
+            CloudSim.startSimulation();
+            List<CloudletMobility> cloudletFinished = broker.getCloudletReceivedList();
+            CloudSim.stopSimulation();
+            printCloudletList(cloudletFinished);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -47,13 +57,51 @@ public class MobilitySimService {
         return null;
     }
 
+    private List<Datacenter> createDatacenter(ResourceRequestDto dto) {
+        final int[] peId = {0};
+        final int[] hostId = {0};
+        List<Host> hostList = new ArrayList<>();
+        List<Pe> peList = new ArrayList<>();
+
+        dto.hosts().forEach(hs -> {
+            peList.add(new Pe(peId[0], new PeProvisionerSimple(hs.mipsPerPe())));
+            hostList.add(new Host(hostId[0], new RamProvisionerSimple(hs.ram()), new BwProvisionerSimple(hs.bw()), hs.storage(), peList, new VmSchedulerTimeShared(peList)));
+            peId[0] = peId[0] + 1;
+            hostId[0] = hostId[0] + 1;
+        });
+
+        int dcCounter = 1;
+        List<Datacenter> datacenters = new ArrayList<>();
+        dto.datacenters().forEach(dc -> {
+            String dcName = "Datacenter-" + dcCounter;
+            DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
+                    dc.architecture(),
+                    dc.os(),
+                    dc.vmm(),
+                    hostList,
+                    dc.timeZone(),
+                    dc.costPerSec(),
+                    dc.costPerMem(),
+                    dc.costPerStorage(),
+                    dc.costPerBw()
+            );
+            Datacenter datacenter;
+            try {
+                datacenter = new Datacenter(dcName, characteristics, new VmAllocationPolicySimple(hostList), new LinkedList<>(), 0.0);
+                datacenters.add(datacenter);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return datacenters;
+    }
+
     private List<VmMobility> createVm(List<VmConfig> vmConfigs, int brokerId) {
 
         final int[] vmid = {0};
         List<VmMobility> vmList = new ArrayList<>();
         vmConfigs.forEach(vmConfig -> {
-            vmList.add(new VmMobility(
-                    vmid[0],
+            vmList.add(new VmMobility(vmid[0],
                     brokerId,
                     vmConfig.mips(),
                     vmConfig.pes(),
@@ -68,75 +116,25 @@ public class MobilitySimService {
         return vmList;
     }
 
-    private static Datacenter createDatacenter(String name) {
-        List<Host> hostList = new ArrayList();
-        List<Pe> peList = new ArrayList();
-        int mips = 1000;
-        peList.add(new Pe(0, new PeProvisionerSimple((double) mips)));
-        int ram = 2048;
-        long storage = 1000000L;
-        int bw = 10000;
-        hostList.add(new Host(0, new RamProvisionerSimple(ram), new BwProvisionerSimple((long) bw), storage, peList, new VmSchedulerTimeShared(peList)));
-        hostList.add(new Host(1, new RamProvisionerSimple(ram), new BwProvisionerSimple((long) bw), storage, peList, new VmSchedulerTimeShared(peList)));
-        String arch = "x86";
-        String os = "Linux";
-        String vmm = "Xen";
-        double time_zone = 10.0;
-        double cost = 3.0;
-        double costPerMem = 0.05;
-        double costPerStorage = 0.001;
-        double costPerBw = 0.0;
-        LinkedList<Storage> storageList = new LinkedList();
-        DatacenterCharacteristics characteristics = new DatacenterCharacteristics(arch, os, vmm, hostList, time_zone, cost, costPerMem, costPerStorage, costPerBw);
-        Datacenter datacenter = null;
+    private static void printCloudletList(List<CloudletMobility> list) {
+        int size = list.size();
+        String indent = "    ";
+        Log.println();
+        Log.println("========== OUTPUT ==========");
+        Log.println("Cloudlet ID" + indent + "STATUS" + indent + "Data center ID" + indent + "VM ID" + indent + "Time" + indent + "Start Time" + indent + "Finish Time" + indent + "User Name");
+        DecimalFormat dft = new DecimalFormat("###.##");
+        Iterator var5 = list.iterator();
 
-        try {
-            datacenter = new Datacenter(name, characteristics, new VmAllocationPolicySimple(hostList), storageList, 0.0);
-        } catch (Exception var25) {
-            Exception e = var25;
-            e.printStackTrace();
+        while (var5.hasNext()) {
+            CloudletMobility value = (CloudletMobility) var5.next();
+            CloudletMobility cloudlet = value;
+            Log.print(indent + cloudlet.getCloudletId() + indent + indent);
+            if (cloudlet.getStatus() == Cloudlet.CloudletStatus.SUCCESS) {
+                Log.print("SUCCESS");
+                Log.println(indent + indent + cloudlet.getResourceId() + indent + indent + indent + cloudlet.getGuestId() + indent + indent + dft.format(cloudlet.getActualCPUTime()) + indent + indent + dft.format(cloudlet.getExecStartTime()) + indent + indent + dft.format(cloudlet.getExecFinishTime()) + indent + indent + indent + cloudlet.getUser().getName());
+            }
         }
 
-        return datacenter;
     }
-
-
-    private void createDatacenter(ResourceRequestDto dto) {
-        final int[] peId = {0};
-        final int[] hostId = {0};
-        List<Host> hostList = new ArrayList<>();
-        List<Pe> peList = new ArrayList<>();
-
-        dto.hosts().forEach(hs -> {
-            peList.add(new Pe(peId[0], new PeProvisionerSimple(hs.mipsPerPe())));
-            hostList.add(new Host(hostId[0], new RamProvisionerSimple(hs.ram()), new BwProvisionerSimple(hs.bw()), hs.storage(), peList, new VmSchedulerSpaceShared(peList)));
-            peId[0] = peId[0] + 1;
-            hostId[0] = hostId[0] + 1;
-        });
-
-        int dcCounter = 1;
-        dto.datacenters().forEach(dc -> {
-            String dcName = "Datacenter-" + dcCounter;
-            DatacenterCharacteristics characteristics = new DatacenterCharacteristics(
-                    dc.architecture(),
-                    dc.os(),
-                    dc.vmm(),
-                    hostList,
-                    dc.timeZone(),
-                    dc.costPerSec(),
-                    dc.costPerMem(),
-                    dc.costPerStorage(),
-                    dc.costPerBw()
-            );
-
-            try {
-                new Datacenter(dcName, characteristics, new VmAllocationPolicySimple(hostList), new LinkedList<>(), 0.0);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-        });
-    }
-
 
 }
