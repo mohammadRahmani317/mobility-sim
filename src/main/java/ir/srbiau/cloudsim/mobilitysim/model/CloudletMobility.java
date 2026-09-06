@@ -12,6 +12,9 @@ public class CloudletMobility extends Cloudlet {
     private double x;
     private double y;
     private User user;
+    private double sdmsPriority;
+    private double predictedEst;
+    private double predictedEft;
 
 
     public CloudletMobility(int cloudletId, long cloudletLength, int pesNumber, long cloudletFileSize, long cloudletOutputSize,
@@ -33,7 +36,35 @@ public class CloudletMobility extends Cloudlet {
     }
 
     public void setParents(List<CloudletMobility> parents) {
-        this.parents = parents;
+        this.parents = new ArrayList<>(parents);
+    }
+
+    public List<CloudletMobility> getParents() {
+        return List.copyOf(parents);
+    }
+
+    public double getSdmsPriority() {
+        return sdmsPriority;
+    }
+
+    public void setSdmsPriority(double sdmsPriority) {
+        this.sdmsPriority = sdmsPriority;
+    }
+
+    public double getPredictedEst() {
+        return predictedEst;
+    }
+
+    public void setPredictedEst(double predictedEst) {
+        this.predictedEst = predictedEst;
+    }
+
+    public double getPredictedEft() {
+        return predictedEft;
+    }
+
+    public void setPredictedEft(double predictedEft) {
+        this.predictedEft = predictedEft;
     }
 
     public double getX() {
@@ -67,4 +98,3 @@ public class CloudletMobility extends Cloudlet {
                '}';
     }
 }
-

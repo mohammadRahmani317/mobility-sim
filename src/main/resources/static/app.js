@@ -1,156 +1,215 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('simulationForm');
     const presetSelect = document.getElementById('presetSelect');
     const applyPresetBtn = document.getElementById('applyPreset');
     const submitBtn = document.getElementById('submit');
+    const schedulingAlgorithm = document.getElementById('schedulingAlgorithm');
+    const errorBox = document.getElementById('errorMessage');
+    const resultSection = document.getElementById('resultSection');
+    const resultBody = document.getElementById('resultBody');
+    const lists = {
+        datacenters: document.getElementById('datacenterList'),
+        hosts: document.getElementById('hostList'),
+        vms: document.getElementById('vmList')
+    };
+    let presets = [];
 
-    const datacenterList = document.getElementById('datacenterList');
-    const hostList = document.getElementById('hostList');
-    const vmList = document.getElementById('vmList');
+    const fieldDefinitions = {
+        datacenters: [
+            {name: 'architecture', label: 'Architecture', required: true},
+            {name: 'os', label: 'OS', required: true},
+            {name: 'vmm', label: 'VMM', required: true},
+            {name: 'timeZone', label: 'Time Zone', type: 'number'},
+            {name: 'costPerSec', label: 'Cost Per Sec', type: 'number', min: 0},
+            {name: 'costPerMem', label: 'Cost Per Mem', type: 'number', min: 0},
+            {name: 'costPerStorage', label: 'Cost Per Storage', type: 'number', min: 0},
+            {name: 'costPerBw', label: 'Cost Per BW', type: 'number', min: 0}
+        ],
+        hosts: [
+            {name: 'ram', label: 'RAM (MB)', type: 'number', min: 1},
+            {name: 'storage', label: 'Storage', type: 'number', min: 1},
+            {name: 'bw', label: 'Bandwidth (Mbit/s)', type: 'number', min: 1},
+            {name: 'pes', label: 'PEs', type: 'number', min: 1},
+            {name: 'mipsPerPe', label: 'MIPS per PE', type: 'number', min: 1}
+        ],
+        vms: [
+            {name: 'mips', label: 'MIPS', type: 'number', min: 1},
+            {name: 'pes', label: 'PEs', type: 'number', min: 1},
+            {name: 'ram', label: 'RAM (MB)', type: 'number', min: 1},
+            {name: 'bw', label: 'Bandwidth (Mbit/s)', type: 'number', min: 1},
+            {name: 'size', label: 'Size', type: 'number', min: 1},
+            {name: 'vmm', label: 'VMM', required: true}
+        ]
+    };
 
-    const addDatacenterBtn = document.getElementById('addDatacenter');
-    const addHostBtn = document.getElementById('addHost');
-    const addVmBtn = document.getElementById('addVm');
-
-    let presets = {};
-
-    // ---------------- Helpers ----------------
-    function createInput(name, placeholder, type = "text", value = "") {
-        const input = document.createElement("input");
-        input.name = name;
-        input.placeholder = placeholder;
-        input.type = type;
-        input.value = value;
-        input.title=name;
-        return input;
-    }
-
-    function removeButton(container) {
-        const btn = document.createElement("button");
-        btn.textContent = "Remove";
-        btn.type = "button";
-        btn.onclick = () => container.remove();
-        return btn;
-    }
-
-    function createCard(fields, data = {}) {
-        const card = document.createElement("div");
-        card.className = "card";
-        fields.forEach(f => {
-            card.appendChild(createInput(f.name, f.placeholder, f.type || "text", data[f.name] || ""));
+    function createCard(type, data = {}) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        fieldDefinitions[type].forEach(field => {
+            const wrapper = document.createElement('label');
+            wrapper.className = 'field';
+            wrapper.append(document.createTextNode(field.label));
+            const input = document.createElement('input');
+            input.name = field.name;
+            input.type = field.type || 'text';
+            input.value = data[field.name] ?? '';
+            input.required = field.required !== false;
+            if (input.type === 'number') {
+                input.step = 'any';
+                if (field.min !== undefined) input.min = String(field.min);
+            }
+            wrapper.appendChild(input);
+            card.appendChild(wrapper);
         });
-        card.appendChild(removeButton(card));
+        const remove = document.createElement('button');
+        remove.textContent = 'Remove';
+        remove.type = 'button';
+        remove.className = 'remove-btn';
+        remove.addEventListener('click', () => card.remove());
+        card.appendChild(remove);
         return card;
     }
 
-    // ---------------- Add Resource Functions ----------------
-    function addDatacenter(data = {}) {
-        const fields = [
-            {name: "architecture", placeholder: "Architecture"},
-            {name: "os", placeholder: "OS"},
-            {name: "vmm", placeholder: "VMM"},
-            {name: "timeZone", placeholder: "Time Zone", type: "number"},
-            {name: "costPerSec", placeholder: "Cost Per Sec", type: "number"},
-            {name: "costPerMem", placeholder: "Cost Per Mem", type: "number"},
-            {name: "costPerStorage", placeholder: "Cost Per Storage", type: "number"},
-            {name: "costPerBw", placeholder: "Cost Per BW", type: "number"}
-        ];
-        const card = createCard(fields, data);
-        datacenterList.appendChild(card);
+    function addResource(type, data = {}) {
+        lists[type].appendChild(createCard(type, data));
     }
 
-    function addHost(data = {}) {
-        const fields = [
-            {name: "ram", placeholder: "RAM", type: "number"},
-            {name: "storage", placeholder: "Storage", type: "number"},
-            {name: "bw", placeholder: "Bandwidth", type: "number"},
-            {name: "pes", placeholder: "PEs", type: "number"},
-            {name: "mipsPerPe", placeholder: "MIPS per PE", type: "number"}
-        ];
-        const card = createCard(fields, data);
-        hostList.appendChild(card);
+    function applyPreset(preset) {
+        Object.values(lists).forEach(list => list.replaceChildren());
+        addResource('datacenters', preset.datacenter);
+        addResource('hosts', preset.host);
+        addResource('vms', preset.vm);
     }
 
-    function addVm(data = {}) {
-        const fields = [
-            {name: "mips", placeholder: "MIPS", type: "number"},
-            {name: "pes", placeholder: "PEs", type: "number"},
-            {name: "ram", placeholder: "RAM", type: "number"},
-            {name: "bw", placeholder: "Bandwidth", type: "number"},
-            {name: "size", placeholder: "Size", type: "number"},
-            {name: "vmm", placeholder: "VMM"}
-        ];
-        const card = createCard(fields, data);
-        vmList.appendChild(card);
-    }
-
-    // ---------------- Fetch Presets from Backend ----------------
-    fetch('/api/mobility-sim/presets')
-        .then(res => res.json())
-        .then(data => {
-            presets = data; // expects { "LINUX": {...}, "WINDOWS": {...} }
-            Object.keys(presets).forEach(key => {
-                const option = document.createElement("option");
-                option.value = key;
-                option.textContent = presets[key].type;
+    async function loadPresets() {
+        try {
+            const response = await fetch('/api/mobility-sim/presets');
+            if (!response.ok) throw new Error(`Preset request failed (${response.status})`);
+            presets = await response.json();
+            presets.forEach((preset, index) => {
+                const option = document.createElement('option');
+                option.value = String(index);
+                option.textContent = preset.type;
                 presetSelect.appendChild(option);
             });
-        })
-        .catch(err => console.error("Failed to load presets:", err));
-
-    // ---------------- Apply Preset ----------------
-    applyPresetBtn.addEventListener('click', () => {
-        const type = presetSelect.value;
-        if (!type || !presets[type]) return;
-
-        const preset = presets[type];
-
-        // Clear existing lists
-        datacenterList.innerHTML = "";
-        hostList.innerHTML = "";
-        vmList.innerHTML = "";
-
-        // Add preset as first card
-        addDatacenter(preset.datacenter);
-        addHost(preset.host);
-        addVm(preset.vm);
-    });
-
-    // ---------------- Add Buttons ----------------
-    addDatacenterBtn.addEventListener('click', () => addDatacenter());
-    addHostBtn.addEventListener('click', () => addHost());
-    addVmBtn.addEventListener('click', () => addVm());
-
-    // ---------------- Submit ----------------
-    submitBtn.addEventListener('click', () => {
-        function collect(list) {
-            return Array.from(list.children).map(card => {
-                const obj = {};
-                card.querySelectorAll('input').forEach(input => {
-                    obj[input.name] = input.type === "number" ? Number(input.value) : input.value;
-                });
-                return obj;
-            });
+            if (presets.length > 0) {
+                presetSelect.value = '0';
+                applyPreset(presets[0]);
+            }
+        } catch (error) {
+            showError(`Could not load presets: ${error.message}`);
         }
+    }
 
-        const payload = {
-            datacenters: collect(datacenterList),
-            hosts: collect(hostList),
-            vms: collect(vmList)
-        };
-
-        fetch('/api/mobility-sim', {
-            method: 'POST',
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(payload)
-        })
-            .then(res => res.json())
-            .then(resp => {
-                alert("Data submitted successfully!");
-                console.log(resp);
-            })
-            .catch(err => {
-                alert("Failed to submit data!");
-                console.error(err);
+    function collect(type) {
+        return Array.from(lists[type].querySelectorAll('.card')).map(card => {
+            const value = {};
+            card.querySelectorAll('input').forEach(input => {
+                value[input.name] = input.type === 'number' ? Number(input.value) : input.value.trim();
             });
+            return value;
+        });
+    }
+
+    function buildSimulationRequest() {
+        return {
+            datacenters: collect('datacenters'),
+            hosts: collect('hosts'),
+            vms: collect('vms'),
+            schedulingAlgorithm: schedulingAlgorithm.value
+        };
+    }
+
+    function validateForm() {
+        if (!form.reportValidity()) return false;
+        const missing = Object.entries(lists).find(([, list]) => list.children.length === 0);
+        if (missing) {
+            showError(`Add at least one ${missing[0].replace(/s$/, '')}.`);
+            return false;
+        }
+        return true;
+    }
+
+    function setRunning(running) {
+        submitBtn.disabled = running;
+        submitBtn.textContent = running ? 'Running…' : 'Run Simulation';
+    }
+
+    function showError(message) {
+        errorBox.textContent = message;
+        errorBox.hidden = false;
+    }
+
+    function clearMessages() {
+        errorBox.hidden = true;
+        resultSection.hidden = true;
+    }
+
+    function showResult(result) {
+        const rows = [
+            ['Scheduling Algorithm', result.schedulingAlgorithm],
+            ['Total Workflows', result.totalWorkflowCount],
+            ['Successful Workflows', result.successfulWorkflowCount],
+            ['Failed Workflows', result.failedWorkflowCount],
+            ['Total Tasks', result.totalTaskCount],
+            ['Completed Tasks', result.completedTaskCount],
+            ['Failed Tasks', result.failedTaskCount],
+            ['Deadline Success Rate', `${formatNumber(result.deadlineSuccessRate)}%`],
+            ['Makespan', `${formatNumber(result.makespan)} sec`],
+            ['Average Waiting Time', `${formatNumber(result.averageWaitingTime)} sec`]
+        ];
+        resultBody.replaceChildren(...rows
+            .filter(([, value]) => value !== null && value !== undefined)
+            .map(([label, value]) => {
+                const row = document.createElement('tr');
+                const heading = document.createElement('th');
+                const cell = document.createElement('td');
+                heading.textContent = label;
+                cell.textContent = String(value);
+                row.append(heading, cell);
+                return row;
+            }));
+        resultSection.hidden = false;
+        resultSection.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }
+
+    function formatNumber(value) {
+        return Number.isFinite(Number(value)) ? Number(value).toFixed(2) : value;
+    }
+
+    async function runSimulation() {
+        clearMessages();
+        if (!validateForm()) return;
+        setRunning(true);
+        try {
+            const response = await fetch('/api/mobility-sim', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(buildSimulationRequest())
+            });
+            const body = await response.json().catch(() => null);
+            if (!response.ok) {
+                throw new Error(body?.message || body?.error || `Simulation failed (${response.status})`);
+            }
+            showResult(body);
+        } catch (error) {
+            showError(error.message || 'Simulation failed.');
+        } finally {
+            setRunning(false);
+        }
+    }
+
+    document.getElementById('addDatacenter').addEventListener('click', () => addResource('datacenters'));
+    document.getElementById('addHost').addEventListener('click', () => addResource('hosts'));
+    document.getElementById('addVm').addEventListener('click', () => addResource('vms'));
+    applyPresetBtn.addEventListener('click', () => {
+        const preset = presets[Number(presetSelect.value)];
+        if (preset) applyPreset(preset);
     });
+    form.addEventListener('submit', event => {
+        event.preventDefault();
+        runSimulation();
+    });
+
+    loadPresets();
 });

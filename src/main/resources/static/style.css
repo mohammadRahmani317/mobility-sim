@@ -55,7 +55,16 @@ h1 {
     border-radius: 5px;
 }
 
-.card button {
+.field {
+    flex: 1 1 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: #444;
+    font-size: 0.88rem;
+}
+
+.card .remove-btn {
     flex: 0 0 80px;
     background-color: #e74c3c;
     color: white;
@@ -64,8 +73,13 @@ h1 {
     cursor: pointer;
 }
 
-.card button:hover {
+.card .remove-btn:hover {
     background-color: #c0392b;
+}
+
+.btn:disabled {
+    cursor: wait;
+    opacity: 0.65;
 }
 
 .btn {
@@ -102,16 +116,73 @@ h1 {
     background-color: #d35400;
 }
 
-.preset-section {
+.preset-section,
+.algorithm-section {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 20px;
 }
 
-.preset-section select {
+.preset-section select,
+.algorithm-section select {
     flex: 1;
     padding: 8px;
     border-radius: 5px;
     border: 1px solid #ccc;
+}
+
+.message {
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.error-message {
+    color: #8a1f17;
+    background: #fdecea;
+    border: 1px solid #f4b7b2;
+}
+
+.result-section {
+    margin-top: 25px;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+th, td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
+
+th {
+    width: 55%;
+    color: #444;
+}
+
+@media (max-width: 600px) {
+    .container {
+        margin: 0;
+        padding: 15px;
+        border-radius: 0;
+    }
+
+    .preset-section,
+    .algorithm-section {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .card .remove-btn {
+        min-height: 40px;
+    }
 }

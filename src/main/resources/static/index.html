@@ -11,38 +11,54 @@
 <div class="container">
     <h1>CloudSim Simulator</h1>
 
-    <!-- Preset Selection -->
+    <form id="simulationForm">
     <div class="section preset-section">
         <label for="presetSelect">Select Resource Preset:</label>
         <select id="presetSelect">
             <option value="">--Select Preset--</option>
         </select>
-        <button id="applyPreset" class="btn">Apply Preset</button>
+        <button id="applyPreset" type="button" class="btn">Apply Preset</button>
     </div>
 
-    <!-- Datacenter Section -->
+    <div class="section algorithm-section">
+        <label for="schedulingAlgorithm">Scheduling Algorithm:</label>
+        <select id="schedulingAlgorithm" required>
+            <option value="ROUND_ROBIN" selected>Round Robin</option>
+            <option value="NEAREST_VM">Nearest VM</option>
+            <option value="SDMS">SDMS - Paper Based</option>
+        </select>
+    </div>
+
     <div class="section">
         <h2>Datacenters</h2>
         <div id="datacenterList"></div>
-        <button id="addDatacenter" class="btn add-btn">Add Datacenter</button>
+        <button id="addDatacenter" type="button" class="btn add-btn">Add Datacenter</button>
     </div>
 
     <!-- Host Section -->
     <div class="section">
         <h2>Hosts</h2>
         <div id="hostList"></div>
-        <button id="addHost" class="btn add-btn">Add Host</button>
+        <button id="addHost" type="button" class="btn add-btn">Add Host</button>
     </div>
 
     <!-- VM Section -->
     <div class="section">
         <h2>VMs</h2>
         <div id="vmList"></div>
-        <button id="addVm" class="btn add-btn">Add VM</button>
+        <button id="addVm" type="button" class="btn add-btn">Add VM</button>
     </div>
 
-    <!-- Submit Button -->
-    <button id="submit" class="btn submit-btn">Submit</button>
+    <div id="errorMessage" class="message error-message" role="alert" hidden></div>
+    <button id="submit" type="submit" class="btn submit-btn">Run Simulation</button>
+    </form>
+
+    <section id="resultSection" class="section result-section" hidden>
+        <h2>Simulation Result</h2>
+        <div class="table-wrap">
+            <table><tbody id="resultBody"></tbody></table>
+        </div>
+    </section>
 </div>
 
 <script src="app.js"></script>
